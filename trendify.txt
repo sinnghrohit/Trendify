@@ -1,0 +1,12 @@
+trendify/
+├── backend/
+│   ├── models/
+│   ├── routes/
+│   ├── controllers/
+│   ├── middleware/
+│   └── server.js
+├── frontend/ (React app)
+│   ├── src/
+│   │   ├── pages/
+│   │   ├── components/
+│   │   └── App.js
