@@ -1,55 +1,70 @@
-import dotenv from "dotenv";
-dotenv.config(); // 👈 YEH sabse pehle hona chahiye
-
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import User from "../models/user.js";
+import { Strategy as FacebookStrategy } from "passport-facebook";
+import dotenv from "dotenv";
+dotenv.config();
 
-// Load from .env
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-// Debug logs
-console.log("GOOGLE_CLIENT_ID:", GOOGLE_CLIENT_ID);
-console.log("GOOGLE_CLIENT_SECRET:", GOOGLE_CLIENT_SECRET);
-
+// Google Strategy
 passport.use(
   new GoogleStrategy(
     {
-      clientID: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: "/api/auth/google/callback",
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "http://localhost:5000/api/auth/google/callback",
     },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const existingUser = await User.findOne({ googleId: profile.id });
+    function (accessToken, refreshToken, profile, done) {
+      console.log("Google Profile:", profile);
 
-        if (existingUser) return done(null, existingUser);
-
-        const newUser = await User.create({
-          name: profile.displayName,
-          email: profile.emails[0].value,
-          googleId: profile.id,
-        });
-
-        return done(null, newUser);
-      } catch (err) {
-        return done(err, false);
+      const email = profile.emails?.[0]?.value;
+      if (!email) {
+        console.error("No email found in Google profile");
+        return done(new Error("No email found"), null);
       }
+
+      const user = {
+        _id: profile.id,
+        name: profile.displayName,
+        email,
+        provider: "google",
+      };
+      return done(null, user);
     }
   )
 );
 
-// Session management (optional)
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
+// Facebook Strategy
+passport.use(
+  new FacebookStrategy(
+    {
+      clientID: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      callbackURL: "http://localhost:5000/api/auth/facebook/callback",
+      profileFields: ['id', 'displayName', 'emails', 'photos'],
+    },
+    (accessToken, refreshToken, profile, done) => {
+      console.log("Facebook Profile:", profile);
 
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch (err) {
-    done(err, null);
-  }
+      const email = profile.emails?.[0]?.value;
+      if (!email) {
+        console.error("No email found in Facebook profile");
+        return done(new Error("No email found"), null);
+      }
+
+      const user = {
+        _id: profile.id,
+        name: profile.displayName,
+        email,
+        provider: "facebook",
+      };
+      return done(null, user);
+    }
+  )
+);
+
+// Session serialize & deserialize
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+passport.deserializeUser((user, done) => {
+  done(null, user);
 });
